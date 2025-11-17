@@ -37,9 +37,9 @@ fun Context.startNewUpload(
         .putString(UploadWorker.TASK_CREATION_PARAMS_KEY, params.toPersistableData().toJson())
         .build()
     val uploadWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-        .setInputData(inputData).build()
+        .setInputData(inputData)
     uploadWorkRequest.addTag("${UploadWorker::class.java.simpleName}-$params.id")    
-    WorkManager.getInstance(this).enqueue(uploadWorkRequest)
+    WorkManager.getInstance(this).enqueue(uploadWorkRequest.build())
 
     return params.id
 }
