@@ -35,7 +35,8 @@ fun Context.startNewUpload(
     notificationConfig: UploadNotificationConfig
 ): String {
     val inputData = Data.Builder()
-        .putString(UploadWorker.TASK_CREATION_PARAMS_KEY, Gson().toJson(UploadTaskCreationParameters(params, notificationConfig)))
+        .putString(UploadWorker.TASK_CREATION_PARAMS_KEY, params.toPersistableData().toJson())
+        .putString(UploadWorker.TASK_NOTIFICATION_CONFIG_KEY, Gson().toJson(notificationConfig))
         .build()
 
 

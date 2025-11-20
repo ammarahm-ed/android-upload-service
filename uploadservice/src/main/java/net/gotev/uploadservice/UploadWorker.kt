@@ -32,6 +32,7 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
         private const val UPLOAD_NOTIFICATION_BASE_ID = 1234 // Something unique
 
         const val TASK_CREATION_PARAMS_KEY = "task-creation-params-key"
+        const val TASK_NOTIFICATION_CONFIG_KEY = "task-notification-config-key"
 
         private var notificationIncrementalId = 0
         private val uploadTasksMap = ConcurrentHashMap<String, UploadTask>()
@@ -84,7 +85,7 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
         @Synchronized
         @JvmOverloads
         @JvmStatic
-        fun stop(context: Context, forceStop: Boolean = false) =  stopAllUploads()
+        fun stop(context: Context, forceStop: Boolean = false) = stopAllUploads()
     }
 
     var notificationConfig: (context: Context, uploadId: String) -> UploadNotificationConfig =
@@ -128,7 +129,10 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
         }
 
         if (UploadServiceConfig.isForegroundService && uploadTasksMap.isEmpty()) {
-            UploadServiceLogger.debug(TAG, UploadServiceLogger.NA) { "All tasks completed, stopping foreground execution" }
+            UploadServiceLogger.debug(
+                TAG,
+                UploadServiceLogger.NA
+            ) { "All tasks completed, stopping foreground execution" }
         }
     }
 
@@ -151,7 +155,10 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
             "Starting UploadWorker. Debug info: $UploadServiceConfig"
         }
 
-        val builder = NotificationCompat.Builder(applicationContext, UploadServiceConfig.defaultNotificationChannel!!)
+        val builder = NotificationCompat.Builder(
+            applicationContext,
+            UploadServiceConfig.defaultNotificationChannel!!
+        )
             .setSmallIcon(android.R.drawable.ic_menu_upload)
             .setOngoing(true)
             .setGroup(UploadServiceConfig.namespace)
@@ -185,29 +192,34 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
         return true
     }
 
-    class Strategy: ExclusionStrategy {
-        override fun shouldSkipField(f: FieldAttributes?): Boolean {
-            return false
-        }
-
-        override fun shouldSkipClass(clazz: Class<*>?): Boolean {
-            return clazz === Lazy::class.java
-        }
-
-    }
-
     private fun getUploadTaskCreationParameters(): UploadTaskCreationParameters? {
         val taskCreationParamsString = inputData.getString(TASK_CREATION_PARAMS_KEY)
+        var taskParams: UploadTaskParameters? = null
 
-        val gson = GsonBuilder().addDeserializationExclusionStrategy(Strategy()).create()
+        taskCreationParamsString?.let {
+            taskParams =
+                UploadTaskParameters.createFromPersistableData(PersistableData.fromJson(it))
+        }
 
-        return gson.fromJson(taskCreationParamsString, UploadTaskCreationParameters::class.java)
+        taskParams?.let { params ->
+            return UploadTaskCreationParameters(
+                params = params,
+                notificationConfig = Gson().fromJson(inputData.getString(TASK_NOTIFICATION_CONFIG_KEY),
+                    UploadNotificationConfig::class.java)
+            )
+
+        }
+        return null
     }
 
-    private fun showNotification(notificationId: Int,notification: Notification) {
+    private fun showNotification(notificationId: Int, notification: Notification) {
         val notificationManager = NotificationManagerCompat.from(applicationContext)
 
-        if (ActivityCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             notificationManager.notify(notificationId, notification)
         }
     }
