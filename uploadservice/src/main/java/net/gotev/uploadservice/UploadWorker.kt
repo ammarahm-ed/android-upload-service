@@ -9,6 +9,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.google.gson.ExclusionStrategy
+import com.google.gson.FieldAttributes
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.InstanceCreator
 import net.gotev.uploadservice.data.UploadNotificationConfig
 import net.gotev.uploadservice.data.UploadTaskParameters
 import net.gotev.uploadservice.extensions.UploadTaskCreationParameters
@@ -180,19 +185,23 @@ class UploadWorker(context: Context, params: WorkerParameters) : Worker(context,
         return true
     }
 
+    class Strategy: ExclusionStrategy {
+        override fun shouldSkipField(f: FieldAttributes?): Boolean {
+            return false
+        }
+
+        override fun shouldSkipClass(clazz: Class<*>?): Boolean {
+            return clazz === Lazy::class.java
+        }
+
+    }
+
     private fun getUploadTaskCreationParameters(): UploadTaskCreationParameters? {
         val taskCreationParamsString = inputData.getString(TASK_CREATION_PARAMS_KEY)
-        var taskParams: UploadTaskParameters? = null
-        taskCreationParamsString?.let {
-            taskParams = UploadTaskParameters.createFromPersistableData(PersistableData.fromJson(it))
-        }
-        taskParams?.let {params ->
-            return UploadTaskCreationParameters(
-                params = params,
-                notificationConfig = notificationConfig(applicationContext, params.id)
-            )
-        }
-        return null
+
+        val gson = GsonBuilder().addDeserializationExclusionStrategy(Strategy()).create()
+
+        return gson.fromJson(taskCreationParamsString, UploadTaskCreationParameters::class.java)
     }
 
     private fun showNotification(notificationId: Int,notification: Notification) {

@@ -12,6 +12,7 @@ import android.os.Parcelable
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.gson.Gson
 import net.gotev.uploadservice.UploadServiceConfig
 import net.gotev.uploadservice.UploadTask
 import net.gotev.uploadservice.UploadWorker
@@ -34,8 +35,10 @@ fun Context.startNewUpload(
     notificationConfig: UploadNotificationConfig
 ): String {
     val inputData = Data.Builder()
-        .putString(UploadWorker.TASK_CREATION_PARAMS_KEY, params.toPersistableData().toJson())
+        .putString(UploadWorker.TASK_CREATION_PARAMS_KEY, Gson().toJson(UploadTaskCreationParameters(params, notificationConfig)))
         .build()
+
+
     val uploadWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
         .setInputData(inputData)
     uploadWorkRequest.addTag("${UploadWorker::class.java.simpleName}-$params.id")    
